@@ -137,20 +137,15 @@ Each component includes detailed educational comments explaining design decision
 
 This is currently a personal learning project, but contributions are welcome once the MVP is complete.
 
-## License
-
-MIT License - See [LICENSE](LICENSE) for details
-
 ## Acknowledgments
 
 - Inspired by the need for better ADHD productivity tools
 - Built to learn production ML systems engineering
-- Designed to be a standout project for alignment fellowships & big tech interviews
 
 ---
 
-**Status:** In active development. Currently building Phase 1 (C++ event engine).
+**Status:** Currently building. Currently building Phase 1 (C++ event engine).
 
-**Author:** [Your Name]  
-**Contact:** [Your Email]  
+
 **Last Updated:** December 29, 2025
+
