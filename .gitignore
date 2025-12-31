@@ -1,0 +1,103 @@
+# Neural Focus .gitignore
+
+# ============================================
+# PRIVACY: Never commit user data or logs
+# ============================================
+*.log
+*.mmap
+productivity_data/
+events_*.bin
+user_data/
+
+# ============================================
+# C++ Build Artifacts
+# ============================================
+core/build/
+core/cmake-build-*/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# ============================================
+# Python
+# ============================================
+ml/venv/
+ml/__pycache__/
+ml/*.pyc
+ml/.pytest_cache/
+ml/.coverage
+ml/htmlcov/
+ml/dist/
+ml/build/
+ml/*.egg-info/
+
+# ML Models (too large for git)
+ml/models/*.pkl
+ml/models/*.pt
+ml/models/*.h5
+ml/checkpoints/
+
+# Training data
+ml/data/*.csv
+ml/data/*.parquet
+
+# ============================================
+# Java / Spring Boot
+# ============================================
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+backend/.idea/
+backend/*.iml
+
+# ============================================
+# Node / React
+# ============================================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.cache/
+frontend/.env.local
+
+# ============================================
+# IDEs and Editors
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ============================================
+# PostgreSQL
+# ============================================
+*.sql.backup
+pg_data/
+
+# ============================================
+# Logs and Temp Files
+# ============================================
+*.log
+*.tmp
+*.temp
+.env
+
+# ============================================
+# OS Files
+# ============================================
+Thumbs.db
+desktop.ini
