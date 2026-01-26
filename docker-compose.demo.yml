@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  replay:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    command:
+      [
+        "python",
+        "-m",
+        "ml.event_replay",
+        "--log-path",
+        "/data/events.log",
+        "--endpoint",
+        "tcp://0.0.0.0:5560",
+        "--startup-delay-ms",
+        "100",
+        "--sleep-ms",
+        "5"
+      ]
+    volumes:
+      - "./events_test_2026-01-02.log:/data/events.log:ro"
+
+  inference:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    command:
+      [
+        "python",
+        "-m",
+        "ml.inference_server",
+        "--backend-url",
+        "http://backend:8080",
+        "--session-goal",
+        "Deep work demo",
+        "--zmq-endpoint",
+        "tcp://replay:5560"
+      ]
+    depends_on:
+      - replay
+      - backend

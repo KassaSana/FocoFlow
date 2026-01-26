@@ -94,15 +94,102 @@ cd ../../ml
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
+# Optional: install xgboost to enable the XGBoost training backend
+pip install xgboost
 
 # Start backend
 cd ../backend
-./mvnw spring-boot:run
+chmod +x mvnw  # macOS/Linux only (first time)
+./mvnw spring-boot:run  # or mvnw.cmd spring-boot:run on Windows
 
 # Start frontend
 cd ../frontend
 npm install && npm run dev
 ```
+
+### Local demo helpers
+
+```powershell
+# Start backend + inference bridge + frontend (PowerShell)
+.\tools\start_neural_focus.ps1
+
+# Cross-platform launcher (Python)
+python .\tools\start_neural_focus.py
+
+# Build the core engine (PowerShell)
+.\tools\build_core.ps1
+
+# Start the C++ engine (requires ZeroMQ headers/libs and a built exe)
+.\core\build\bin\neurofocus_engine.exe --log-dir . --log-base events
+
+# Start stack + replay a recorded log into ZeroMQ (PowerShell)
+.\tools\start_neural_focus.ps1 -LogPath .\events_test_2026-01-02.log -ReplaySleepMs 5
+
+# Run just the inference bridge (manual)
+python -m ml.inference_server --backend-url http://localhost:8080 --session-goal "Deep work demo"
+
+# Replay a recorded log into ZeroMQ (for demos)
+python -m ml.event_replay --log-path .\events_test_2026-01-02.log --endpoint tcp://127.0.0.1:5560
+```
+
+### Demo flow (log replay)
+
+1. Start the backend:
+   - `mvn spring-boot:run` (in `backend`)
+   - Or: `docker compose up -d backend`
+2. Run the stack with log replay:
+   - `.\tools\start_neural_focus.ps1 -SessionGoal "Deep work demo" -LogPath .\events_test_2026-01-02.log -ReplaySleepMs 5`
+3. Open the UI at `http://localhost:5173` and confirm the Live Prediction card updates and the history list fills.
+
+### Docker demo (one command)
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
+```
+
+This starts the backend, frontend, inference bridge, and replay publisher together.
+
+### Docker backend (optional)
+
+```powershell
+# Start the Spring Boot API without local Maven
+docker compose up -d backend
+```
+
+### Metrics & Benchmarks
+
+```powershell
+# Summarize a recorded log and feature throughput
+python -m ml.metrics_report --log-path .\events_test_2026-01-02.log --benchmark-features
+```
+
+See `docs/METRICS.md` for a sample report.
+See `docs/DEPLOYMENT.md` for Docker-based deployment instructions.
+
+## Troubleshooting
+
+### Common Issues
+
+1.  **Backend fails to start:**
+    *   Ensure Java 17+ is installed (`java -version`).
+    *   Ensure Maven is installed (`mvn -version`) or use the Docker method.
+    *   If using Docker, ensure Docker Desktop is running (`docker info`).
+
+2.  **Port Conflicts:**
+    *   **8080 (Backend):** If occupied, change `server.port` in `backend/src/main/resources/application.properties`.
+    *   **5173 (Frontend):** Vite will automatically switch to 5174+ if 5173 is busy.
+    *   **5560 (ZeroMQ):** Ensure no other instance of the engine or replay script is running.
+
+3.  **Missing Log File:**
+    *   If `events_test_2026-01-02.log` is missing, generate a dummy one:
+        ```bash
+        python generate_log.py
+        ```
+
+4.  **UI Not Updating:**
+    *   Check if the backend is running (`http://localhost:8080/actuator/health`).
+    *   Check if the inference server is running (check terminal logs).
+    *   Ensure the replay script is actually sending events (check for "Published event" logs).
 
 ## Development Roadmap
 
@@ -132,6 +219,10 @@ Each component includes detailed educational comments explaining design decision
 | Throughput | 10k events/sec | Handle rapid typing + mouse |
 | Prediction accuracy | >75% precision | Avoid false alarms |
 | CPU overhead | <5% avg | Runs in background |
+
+## CI
+
+Automated checks run via `.github/workflows/ci.yml` (Python, frontend, backend tests).
 
 ## Contributing
 
