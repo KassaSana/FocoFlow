@@ -1,0 +1,11 @@
+{
+  "log_path": ".\\events_test_2026-01-02.log",
+  "total_events": 100,
+  "duration_seconds": 9.9,
+  "events_per_second": 10.1010101010101,
+  "unique_apps": 1,
+  "event_type_counts": {
+    "MOUSE_MOVE": 100
+  },
+  "feature_throughput_eps": 6467.008535868809
+}
