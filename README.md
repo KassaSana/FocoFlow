@@ -32,40 +32,73 @@ See [Technical Design Document](docs/TECHNICAL_DESIGN_DOCUMENT.md) for complete 
 ## Project Structure
 
 ```
-NeuralFocus/
-├── core/                    # C++ event capture engine
-│   ├── event_processor.cpp  # Lock-free ring buffer
-│   ├── windows_hooks.cpp    # Win32 API integration
-│   ├── feature_engine.cpp   # SIMD-optimized feature extraction
-│   └── mmap_logger.cpp      # Memory-mapped file logging
+FocoFlow/
+├── core/                       # C++ event capture engine (Windows-only)
+│   ├── event.h                 # Event struct (cache-aligned)
+│   ├── ring_buffer.h           # Lock-free SPSC queue
+│   ├── windows_hooks.{h,cpp}   # Win32 low-level hook capture
+│   ├── event_processor.{h,cpp} # Hooks -> ring buffer coordinator
+│   ├── mmap_logger.{h,cpp}     # Memory-mapped event log
+│   ├── zmq_publisher.{h,cpp}   # ZeroMQ event publisher
+│   ├── neurofocus_engine.cpp   # End-to-end runner (capture + log + publish)
+│   ├── experimental/           # Unwired context-recovery R&D headers + demo
+│   └── CMakeLists.txt
 │
-├── ml/                      # Python ML pipeline
-│   ├── data_loader.py       # Event log parser
-│   ├── feature_engineering.py  # Rolling window features
-│   ├── models.py            # XGBoost + LSTM implementations
-│   ├── training_pipeline.py    # Model training orchestration
-│   └── inference_server.py     # Real-time prediction service
+├── ml/                         # Python ML pipeline
+│   ├── event_schema.py         # Shared binary struct definitions
+│   ├── event_log_reader.py     # Parse the C++ binary log
+│   ├── event_replay.py         # Replay a log into ZeroMQ
+│   ├── features.py             # Rolling-window feature extraction
+│   ├── dataset_builder.py      # Build training datasets from logs
+│   ├── labeling.py             # Label assignment workflow
+│   ├── training_pipeline.py    # Train baseline classifier
+│   ├── train_cli.py            # CLI entry point for training
+│   ├── inference_server.py     # ZMQ subscriber -> REST/WS bridge
+│   ├── zmq_subscriber.py       # ZeroMQ event subscriber
+│   └── metrics_report.py       # Summarize logs, benchmark features
 │
-├── backend/                 # Spring Boot API
-│   └── src/main/java/com/neurofocus/
-│       ├── controllers/     # REST endpoints
-│       ├── services/        # Business logic
-│       └── repositories/    # Database access
+├── backend/                    # Spring Boot REST + WebSocket API
+│   └── src/main/
+│       ├── java/com/neurofocus/
+│       │   ├── NeuroFocusApplication.java   # Spring Boot entry
+│       │   ├── config/                      # CorsConfig
+│       │   ├── controllers/                 # /api/health, /api/predictions, /api/sessions
+│       │   ├── predictions/                 # Prediction model + service
+│       │   ├── sessions/                    # Session model + service
+│       │   └── websocket/                   # /ws/predictions stream
+│       └── resources/application.properties
 │
-├── frontend/                # React TypeScript UI
-│   └── src/
-│       ├── components/      # Dashboard, charts, controls
-│       ├── stores/          # Zustand state management
-│       └── services/        # WebSocket + REST clients
+├── frontend/                   # React + Vite + TypeScript dashboard
+│   ├── src/
+│   │   ├── App.tsx             # Main dashboard + WS client
+│   │   ├── main.tsx            # React entry point
+│   │   ├── utils.ts            # Formatting + risk helpers
+│   │   └── styles.css
+│   ├── index.html
+│   └── package.json
 │
-├── docs/                    # Documentation
-│   ├── TECHNICAL_DESIGN_DOCUMENT.md  # System design (this was just created)
-│   ├── ARCHITECTURE.md      # Component diagrams
-│   └── API_SPEC.md          # REST/WebSocket contracts
+├── docs/                       # Design + reference documentation
+│   ├── TECHNICAL_DESIGN_DOCUMENT.md
+│   ├── ARCHITECTURE.md
+│   ├── CONCEPTS.md
+│   ├── SCHEMAS.md
+│   ├── CONTEXT_RECOVERY_DESIGN.md
+│   ├── METRICS.md
+│   └── DEPLOYMENT.md
 │
-└── tools/                   # Development utilities
-    ├── labeler.py           # Ground truth annotation UI
-    └── stress_test.py       # Performance benchmarking
+├── tools/                      # Developer scripts
+│   ├── generate_log.py         # Synthesize a demo event log
+│   ├── start_neural_focus.{ps1,py}  # Launch backend + ML + frontend
+│   ├── build_core.ps1          # Configure + build the C++ engine
+│   └── benchmark.cpp           # Core benchmark
+│
+├── samples/
+│   └── events_demo.bin         # Cold-clone demo log (committed)
+│
+├── docker-compose.yml
+├── docker-compose.demo.yml
+├── README.md
+└── PROGRESS.md
 ```
 
 ## Quick Start
@@ -82,8 +115,8 @@ NeuralFocus/
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/neural-focus.git
-cd neural-focus
+git clone https://github.com/KassaSana/FocoFlow.git
+cd FocoFlow
 
 # Build C++ engine
 cd core && mkdir build && cd build
@@ -123,13 +156,13 @@ python .\tools\start_neural_focus.py
 .\core\build\bin\neurofocus_engine.exe --log-dir . --log-base events
 
 # Start stack + replay a recorded log into ZeroMQ (PowerShell)
-.\tools\start_neural_focus.ps1 -LogPath .\events_test_2026-01-02.log -ReplaySleepMs 5
+.\tools\start_neural_focus.ps1 -LogPath .\samples/events_demo.bin -ReplaySleepMs 5
 
 # Run just the inference bridge (manual)
 python -m ml.inference_server --backend-url http://localhost:8080 --session-goal "Deep work demo"
 
 # Replay a recorded log into ZeroMQ (for demos)
-python -m ml.event_replay --log-path .\events_test_2026-01-02.log --endpoint tcp://127.0.0.1:5560
+python -m ml.event_replay --log-path .\samples/events_demo.bin --endpoint tcp://127.0.0.1:5560
 ```
 
 ### Demo flow (log replay)
@@ -138,7 +171,7 @@ python -m ml.event_replay --log-path .\events_test_2026-01-02.log --endpoint tcp
    - `mvn spring-boot:run` (in `backend`)
    - Or: `docker compose up -d backend`
 2. Run the stack with log replay:
-   - `.\tools\start_neural_focus.ps1 -SessionGoal "Deep work demo" -LogPath .\events_test_2026-01-02.log -ReplaySleepMs 5`
+   - `.\tools\start_neural_focus.ps1 -SessionGoal "Deep work demo" -LogPath .\samples/events_demo.bin -ReplaySleepMs 5`
 3. Open the UI at `http://localhost:5173` and confirm the Live Prediction card updates and the history list fills.
 
 ### Docker demo (one command)
@@ -160,11 +193,21 @@ docker compose up -d backend
 
 ```powershell
 # Summarize a recorded log and feature throughput
-python -m ml.metrics_report --log-path .\events_test_2026-01-02.log --benchmark-features
+python -m ml.metrics_report --log-path .\samples/events_demo.bin --benchmark-features
 ```
 
 See `docs/METRICS.md` for a sample report.
 See `docs/DEPLOYMENT.md` for Docker-based deployment instructions.
+
+## Documentation
+
+- [Technical Design Document](docs/TECHNICAL_DESIGN_DOCUMENT.md) — full system design and rationale
+- [Architecture](docs/ARCHITECTURE.md) — diagrams and layered component breakdown
+- [Concepts](docs/CONCEPTS.md) — CS concepts used in the project (lock-free, mmap, SIMD, LSTM, etc.)
+- [Schemas](docs/SCHEMAS.md) — binary event format, feature vectors, REST/WS payloads
+- [Context Recovery Design](docs/CONTEXT_RECOVERY_DESIGN.md) — design notes for the experimental "Where was I?" feature
+- [Metrics](docs/METRICS.md) — measured numbers and what they mean
+- [Deployment](docs/DEPLOYMENT.md) — Docker-based deployment instructions
 
 ## Troubleshooting
 
@@ -181,9 +224,9 @@ See `docs/DEPLOYMENT.md` for Docker-based deployment instructions.
     *   **5560 (ZeroMQ):** Ensure no other instance of the engine or replay script is running.
 
 3.  **Missing Log File:**
-    *   If `events_test_2026-01-02.log` is missing, generate a dummy one:
+    *   If `samples/events_demo.bin` is missing, regenerate it:
         ```bash
-        python generate_log.py
+        python tools/generate_log.py
         ```
 
 4.  **UI Not Updating:**
@@ -235,8 +278,8 @@ This is currently a personal learning project, but contributions are welcome onc
 
 ---
 
-**Status:** Currently building. Currently building Phase 1 (C++ event engine).
+**Status:** Engine, ML pipeline, backend, and frontend all have runnable code. The C++ capture engine is Windows-only; on other platforms run the cold-clone demo (`samples/events_demo.bin` + `ml.event_replay`).
 
 
-**Last Updated:** December 29, 2025
+**Last Updated:** April 25, 2026
 
