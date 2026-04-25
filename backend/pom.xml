@@ -13,8 +13,8 @@
     <groupId>com.neurofocus</groupId>
     <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>neurofocus-backend</name>
-    <description>Neural Focus backend API</description>
+    <name>focoflow-backend</name>
+    <description>FocoFlow backend API</description>
 
     <properties>
         <java.version>17</java.version>

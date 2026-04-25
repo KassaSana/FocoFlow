@@ -1,6 +1,6 @@
-# Neural Focus: Core Concepts Explained
+# FocoFlow: Core Concepts Explained
 
-This document explains key computer science concepts used in Neural Focus, written for someone learning systems programming and ML engineering.
+This document explains key computer science concepts used in FocoFlow, written for someone learning systems programming and ML engineering.
 
 ---
 

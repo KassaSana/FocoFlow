@@ -1,4 +1,4 @@
-# Neural Focus
+# FocoFlow
 
 **Predictive Focus Management System with ML-Powered Interventions**
 
@@ -6,11 +6,11 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-## What is Neural Focus?
+## What is FocoFlow?
 
-Neural Focus is an ML-powered productivity system that **predicts** when you're about to lose focus and **intervenes proactively** before distractions happen.
+FocoFlow is an ML-powered productivity system that **predicts** when you're about to lose focus and **intervenes proactively** before distractions happen.
 
-Traditional productivity trackers are reactive—they tell you what happened *after* you've lost focus. Neural Focus is **predictive**—it learns your behavioral patterns and blocks distractions 30 seconds before you'd naturally context-switch.
+Traditional productivity trackers are reactive—they tell you what happened *after* you've lost focus. FocoFlow is **predictive**—it learns your behavioral patterns and blocks distractions 30 seconds before you'd naturally context-switch.
 
 ### Key Features
 

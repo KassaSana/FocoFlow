@@ -1,6 +1,6 @@
-# Neural Focus: System Architecture
+# FocoFlow: System Architecture
 
-This document provides visual diagrams and component-level explanations of the Neural Focus architecture.
+This document provides visual diagrams and component-level explanations of the FocoFlow architecture.
 
 ## Table of Contents
 1. [High-Level System Overview](#high-level-system-overview)
@@ -13,7 +13,7 @@ This document provides visual diagrams and component-level explanations of the N
 
 ## High-Level System Overview
 
-Neural Focus follows a **layered architecture** with strict separation of concerns:
+FocoFlow follows a **layered architecture** with strict separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐

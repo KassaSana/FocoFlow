@@ -381,7 +381,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div>
-          <p className="eyebrow">Neural Focus</p>
+          <p className="eyebrow">FocoFlow</p>
           <h1>Live Focus Command Center</h1>
           <p className="subtitle">
             Predictive focus monitoring with real-time recovery cues and session flow.

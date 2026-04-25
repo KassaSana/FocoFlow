@@ -1,4 +1,4 @@
-# Neural Focus: Technical Design Document
+# FocoFlow: Technical Design Document
 
 **Document Status:** Draft v1.0  
 **Authors:** Development Team  
@@ -19,7 +19,7 @@ Current desktop monitoring tools suffer from:
 - **Manual intervention** - users must consciously activate blocking, which fails when impulsivity strikes
 
 ### Proposed Solution
-**Neural Focus** is a multi-tier ML-powered productivity system that:
+**FocoFlow** is a multi-tier ML-powered productivity system that:
 1. **Captures** every system event (window changes, keystrokes, mouse movements) with <1ms latency using a C++ event engine
 2. **Predicts** distraction risk 30-60 seconds ahead using LSTM models trained on user behavioral patterns
 3. **Intervenes** proactively with adaptive blocking (hosts file modification, process termination) based on predicted focus state

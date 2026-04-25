@@ -15,7 +15,7 @@ param(
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $defaultEngine = Join-Path $root "core/build/bin/neurofocus_engine.exe"
 
-Write-Host "Starting Neural Focus stack..."
+Write-Host "Starting FocoFlow stack..."
 
 if (-not $NoBackend) {
     $backendDir = Join-Path $root "backend"

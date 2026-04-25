@@ -1,5 +1,5 @@
 """
-Cross-platform launcher for the Neural Focus stack.
+Cross-platform launcher for the FocoFlow stack.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ def start_process(command: list[str], cwd: Path) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Start the Neural Focus stack")
+    parser = argparse.ArgumentParser(description="Start the FocoFlow stack")
     parser.add_argument("--backend-url", default="http://localhost:8080")
     parser.add_argument("--session-id", default="live-session")
     parser.add_argument("--session-goal", default="")
@@ -88,7 +88,7 @@ def main() -> None:
     frontend_dir = root / "frontend"
     default_engine = root / "core" / "build" / "bin" / "neurofocus_engine.exe"
 
-    print("Starting Neural Focus stack...")
+    print("Starting FocoFlow stack...")
 
     if not args.no_backend:
         mvn_wrapper = resolve_maven_wrapper(backend_dir)

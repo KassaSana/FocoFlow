@@ -1,4 +1,4 @@
-# Neural Focus: Data Schemas and Models
+# FocoFlow: Data Schemas and Models
 
 This document defines all data structures used across the system, from low-level C++ structs to high-level ML feature vectors.
 
