@@ -6,16 +6,24 @@
 
 1. **event.h** - Event data structure (64-byte cache-aligned)
 2. **ring_buffer.h** - Lock-free queue for events
-3. **context.h** - Context recovery snapshots
-4. **title_parser.h** - Parse window titles to extract work context
-5. **overlay.h** - Win32 overlay UI for context recovery
-6. **context_tracker.h** - State machine for context recovery
-7. **context_demo.cpp** - Demo/test for context recovery
-8. **windows_hooks.h/.cpp** - System event capture (keyboard, mouse, window focus) ✨ NEW
-9. **event_processor.h/.cpp** - Hooks -> ring buffer coordinator
-10. **mmap_logger.h/.cpp** - Memory-mapped event log persistence
-11. **zmq_publisher.h/.cpp** - ZeroMQ event publisher
-12. **neurofocus_engine.cpp** - End-to-end capture + log + publish runner
+3. **windows_hooks.h/.cpp** - System event capture (keyboard, mouse, window focus)
+4. **event_processor.h/.cpp** - Hooks -> ring buffer coordinator
+5. **mmap_logger.h/.cpp** - Memory-mapped event log persistence
+6. **zmq_publisher.h/.cpp** - ZeroMQ event publisher
+7. **neurofocus_engine.cpp** - End-to-end capture + log + publish runner
+
+### Experimental — not integrated into the engine binary
+
+The `experimental/` subdirectory holds the context-recovery R&D. These headers
+and the standalone demo do not link into `neurofocus_engine` and are not part
+of the `neurofocus_core` static library. They build only when the optional
+`context_demo` target is enabled.
+
+1. **experimental/context.h** - Context recovery snapshot type
+2. **experimental/title_parser.h** - Parse window titles to extract work context
+3. **experimental/overlay.h** - Win32 overlay UI for context recovery
+4. **experimental/context_tracker.h** - State machine for context recovery
+5. **experimental/context_demo.cpp** - Standalone demo for the four headers above
 
 ## Windows Hooks (NEW!)
 
@@ -124,8 +132,8 @@ Each step builds on what we have. We're making steady progress! 🚀
 ## Building Everything
 
 ```bash
-# Test context recovery
-g++ -std=c++17 context_demo.cpp -o context_demo.exe -luser32 -lgdi32
+# Test context recovery (experimental, run from core/)
+g++ -std=c++17 -I. experimental/context_demo.cpp -o context_demo.exe -luser32 -lgdi32
 ./context_demo.exe --visual
 
 # Test hooks

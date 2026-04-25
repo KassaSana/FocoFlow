@@ -52,7 +52,11 @@ if(NEUROFOCUS_BUILD_TESTS)
     add_executable(mmap_logger_test mmap_logger_test.cpp)
     target_link_libraries(mmap_logger_test PRIVATE neurofocus_core)
 
-    add_executable(context_demo context_demo.cpp)
+    add_executable(context_demo experimental/context_demo.cpp)
+    target_include_directories(context_demo PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/experimental
+    )
     if(WIN32)
         target_link_libraries(context_demo PRIVATE user32 gdi32)
     endif()
