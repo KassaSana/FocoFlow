@@ -11,7 +11,7 @@ services:
         "-m",
         "ml.event_replay",
         "--log-path",
-        "/data/events.log",
+        "/data/events.bin",
         "--endpoint",
         "tcp://0.0.0.0:5560",
         "--startup-delay-ms",
@@ -20,7 +20,7 @@ services:
         "5"
       ]
     volumes:
-      - "./events_test_2026-01-02.log:/data/events.log:ro"
+      - "./samples/events_demo.bin:/data/events.bin:ro"
 
   inference:
     build:
