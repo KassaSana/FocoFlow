@@ -1,0 +1,17 @@
+{
+  "name": "focoflow",
+  "private": true,
+  "version": "0.2.0",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "test": "npm run test --prefix frontend",
+    "typecheck": "npm run typecheck --prefix frontend",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

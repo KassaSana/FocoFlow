@@ -1,48 +1,21 @@
-# Deployment
+# FocoFlow Deployment
 
-## Docker Compose (recommended)
+> **Note:** As of v0.2, FocoFlow ships as a **Tauri desktop app**. The Docker / Spring Boot deployment path has been removed.
 
-Build and run the backend + frontend containers:
+## Desktop build
 
-```powershell
-docker compose up -d --build
+```bash
+npm install
+cd frontend && npm install && cd ..
+npm run tauri:build
 ```
 
-This exposes:
-- Backend API on `http://localhost:8080`
-- Frontend UI on `http://localhost:5173`
+Artifacts land in `src-tauri/target/release/bundle/`.
 
-### Set the API base URL for the frontend build
+## macOS permissions
 
-The React app reads `VITE_API_BASE` at build time.
+Users must grant **Accessibility** and **Input Monitoring** before capture works. Document this in release notes.
 
-```powershell
-$env:VITE_API_BASE="https://your-domain.example"
-docker compose up -d --build
-```
+## CI
 
-### Demo stack with replay + inference
-
-```powershell
-docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d --build
-```
-
-This adds:
-- `replay`: publishes the bundled log over ZeroMQ
-- `inference`: sends predictions to the backend
-
-## Notes
-
-- The C++ event engine is Windows-only; it is not part of the Docker stack.
-- For production, set a public API base URL and secure the backend with auth.
-
-## CORS
-
-By default, the backend allows local frontend origins:
-`http://localhost:*` and `http://127.0.0.1:*`.
-
-Override with an environment variable:
-
-```powershell
-$env:NEUROFOCUS_ALLOWED_ORIGIN_PATTERNS="https://your-frontend.example"
-```
+See `.github/workflows/ci.yml` — Python training tests, frontend checks, and `cargo check` / `cargo test`.

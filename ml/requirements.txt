@@ -1,1 +1,7 @@
-pyzmq>=25.1.2
+# Offline training dependencies for FocoFlow.
+# The shipped desktop app runs inference in Rust (heuristic baseline, optional ONNX).
+
+# Optional model backends
+# xgboost>=2.0.0
+# skl2onnx>=1.16.0
+# onnx>=1.16.0

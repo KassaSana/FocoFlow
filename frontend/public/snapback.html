@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FocoFlow Snapback</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #0e1116;
+        --muted: #5f6b7a;
+        --accent: #f06b4c;
+        --surface: #ffffff;
+      }
+      body {
+        margin: 0;
+        font-family: "Space Grotesk", sans-serif;
+        background: var(--surface);
+        color: var(--ink);
+      }
+      .overlay {
+        padding: 20px 22px;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 0.65rem;
+        color: var(--muted);
+        margin: 0 0 8px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.15rem;
+      }
+      .summary {
+        margin: 0 0 6px;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      .meta {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 18px;
+        background: var(--accent);
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="overlay">
+      <p class="eyebrow">Snapback</p>
+      <h1>Welcome back — here's where you were</h1>
+      <p class="summary" id="summary">Loading context...</p>
+      <p class="meta" id="meta"></p>
+      <button id="dismiss">Got it</button>
+    </div>
+    <script type="module">
+      import { listen } from "@tauri-apps/api/event";
+      import { invoke } from "@tauri-apps/api/core";
+
+      const summaryEl = document.getElementById("summary");
+      const metaEl = document.getElementById("meta");
+
+      listen("snapback-data", (event) => {
+        const payload = event.payload;
+        summaryEl.textContent = payload.summary || "Previous task";
+        const parts = [];
+        if (payload.file_hint) parts.push(payload.file_hint);
+        if (payload.app_name) parts.push(payload.app_name);
+        if (payload.distraction_duration_secs) {
+          parts.push(`${payload.distraction_duration_secs}s away`);
+        }
+        metaEl.textContent = parts.join(" · ");
+      });
+
+      document.getElementById("dismiss").addEventListener("click", () => {
+        invoke("dismiss_snapback");
+      });
+    </script>
+  </body>
+</html>

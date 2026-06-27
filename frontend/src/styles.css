@@ -283,13 +283,32 @@ h1 {
   color: var(--muted);
 }
 
+.field select,
 .field input {
-  padding: 12px 14px;
+  width: 100%;
+  border: 1px solid rgba(14, 17, 22, 0.12);
   border-radius: 12px;
-  border: 1px solid #e2d7cf;
-  font-family: inherit;
-  font-size: 0.95rem;
-  background: #fff8f2;
+  padding: 12px 14px;
+  font: inherit;
+  background: var(--surface-strong);
+}
+
+.feedback-row {
+  flex-wrap: wrap;
+}
+
+.helper-text.alert {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.helper-text.snapback {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.metric-value.state-value {
+  font-size: 1.1rem;
 }
 
 .session-status {

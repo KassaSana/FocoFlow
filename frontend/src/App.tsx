@@ -1,120 +1,61 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  api,
+  focusStateLabel,
   formatPercent,
   formatScore,
   formatTime,
-  nextBackoffDelay,
   riskLabel,
   riskLevel,
-} from "./utils";
+  type FocusLabel,
+  type PredictionRecord,
+  type SessionRecord,
+  type SessionRecap,
+} from "./api";
 
-type HealthStatus = "checking" | "online" | "offline";
-type WsStatus = "offline" | "connecting" | "online" | "error" | "reconnecting";
-
-type PredictionRecord = {
-  sessionId: string;
-  focusScore: number;
-  distractionRisk: number;
-  timestamp: string;
-};
-
-type SessionRecord = {
-  sessionId: string;
-  goal: string;
-  status: string;
-  startedAt: string | null;
-  endedAt: string | null;
-};
-
-const STORAGE_KEY = "nf_api_base";
-const DEFAULT_API_BASE =
-  import.meta.env.VITE_API_BASE || "http://localhost:8080";
 const HISTORY_LIMIT = 8;
-
-const toWsUrl = (base: string) => {
-  const url = new URL(base);
-  const protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${url.host}/ws/predictions`;
-};
-
-const parsePrediction = (data: unknown): PredictionRecord | null => {
-  if (!data || typeof data !== "object") return null;
-  const record = data as Partial<PredictionRecord>;
-  if (typeof record.focusScore !== "number" || typeof record.distractionRisk !== "number") {
-    return null;
-  }
-  return {
-    sessionId: typeof record.sessionId === "string" ? record.sessionId : "",
-    focusScore: record.focusScore,
-    distractionRisk: record.distractionRisk,
-    timestamp: typeof record.timestamp === "string" ? record.timestamp : "",
-  };
-};
-
-const parseSession = (data: unknown): SessionRecord | null => {
-  if (!data || typeof data !== "object") return null;
-  const record = data as Partial<SessionRecord>;
-  if (typeof record.sessionId !== "string" || typeof record.status !== "string") {
-    return null;
-  }
-  return {
-    sessionId: record.sessionId,
-    goal: typeof record.goal === "string" ? record.goal : "",
-    status: record.status,
-    startedAt: typeof record.startedAt === "string" ? record.startedAt : null,
-    endedAt: typeof record.endedAt === "string" ? record.endedAt : null,
-  };
-};
+const FOCUS_MODES = ["deep", "normal", "recovery"] as const;
 
 const buildSignals = (record: PredictionRecord | null) => {
   if (!record) {
-    return ["Waiting for prediction stream."];
+    return ["Waiting for live capture."];
   }
 
   const level = riskLevel(record.distractionRisk);
-  const signals = [`Risk level: ${level}`, `Focus score: ${formatScore(record.focusScore)}`];
+  const signals = [
+    `Focus state: ${focusStateLabel(record.focusState)}`,
+    `Risk level: ${level}`,
+    `Focus score: ${formatScore(record.focusScore)}`,
+  ];
 
-  if (level === "high") {
-    signals.push("Consider reducing app switches for the next 5 minutes.");
-  } else if (level === "medium") {
-    signals.push("Maintain steady typing rhythm to stay in flow.");
+  if (record.focusState === "PSEUDO_PRODUCTIVE") {
+    signals.push("Looks like busy-work drift. Pick one task and stay with it.");
+  } else if (level === "high") {
+    signals.push("Context-switch thrash detected. Snapback will help on return.");
+  } else if (record.focusState === "DEEP_FOCUS") {
+    signals.push("Deep work detected. Hyperfocus guardrail is watching.");
   } else if (level === "low") {
     signals.push("Focus is stable. Keep momentum.");
-  } else {
-    signals.push("Collecting context to refine the focus signal.");
   }
 
   return signals;
 };
 
-const readStoredApiBase = () => {
-  if (typeof window === "undefined") return DEFAULT_API_BASE;
-  return localStorage.getItem(STORAGE_KEY) || DEFAULT_API_BASE;
-};
-
-const storeApiBase = (value: string) => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, value);
-};
-
 export default function App() {
-  const initialApiBase = readStoredApiBase();
-  const [apiBase, setApiBase] = useState(initialApiBase);
-  const [apiBaseInput, setApiBaseInput] = useState(initialApiBase);
-  const [healthStatus, setHealthStatus] = useState<HealthStatus>("checking");
-  const [wsStatus, setWsStatus] = useState<WsStatus>("offline");
-  const [reconnectDelayMs, setReconnectDelayMs] = useState<number | null>(null);
+  const [healthStatus, setHealthStatus] = useState<"checking" | "online" | "offline">("checking");
+  const [captureRunning, setCaptureRunning] = useState(false);
+  const [permissionMessage, setPermissionMessage] = useState<string | null>(null);
   const [prediction, setPrediction] = useState<PredictionRecord | null>(null);
   const [predictionHistory, setPredictionHistory] = useState<PredictionRecord[]>([]);
   const [sessionGoal, setSessionGoal] = useState("");
   const [sessionRecord, setSessionRecord] = useState<SessionRecord | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [apiBaseError, setApiBaseError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shouldReconnectRef = useRef(true);
-  const retryCountRef = useRef(0);
+  const [focusMode, setFocusMode] = useState<(typeof FOCUS_MODES)[number]>("normal");
+  const [recap, setRecap] = useState<SessionRecap | null>(null);
+  const [hyperfocusNote, setHyperfocusNote] = useState<string | null>(null);
+  const [snapbackNote, setSnapbackNote] = useState<string | null>(null);
+  const [labelStatus, setLabelStatus] = useState<string | null>(null);
 
   const pushPrediction = useCallback((record: PredictionRecord | null) => {
     if (!record) {
@@ -129,226 +70,135 @@ export default function App() {
         last &&
         last.timestamp === record.timestamp &&
         last.focusScore === record.focusScore &&
-        last.distractionRisk === record.distractionRisk &&
-        last.sessionId === record.sessionId;
+        last.distractionRisk === record.distractionRisk;
       const next = isDuplicate ? current : [record, ...current];
       return next.slice(0, HISTORY_LIMIT);
     });
   }, []);
 
-  const fetchHealth = useCallback(async () => {
+  const refreshHealth = useCallback(async () => {
     try {
-      const response = await fetch(`${apiBase}/api/health`);
-      if (!response.ok) throw new Error("Health error");
+      const health = await api.getHealth();
       setHealthStatus("online");
-    } catch (err) {
+      setCaptureRunning(health.captureRunning);
+      setPermissionMessage(health.permissions.message);
+    } catch {
       setHealthStatus("offline");
     }
-  }, [apiBase, pushPrediction]);
+  }, []);
 
-  const fetchLatestPrediction = useCallback(async () => {
+  const refreshLatest = useCallback(async () => {
     try {
-      const response = await fetch(`${apiBase}/api/predictions/latest`);
-      if (!response.ok) {
-        pushPrediction(null);
-        return;
+      const latest = await api.getLatestPrediction();
+      pushPrediction(latest);
+      const history = await api.getPredictionHistory(HISTORY_LIMIT);
+      if (history.length > 0) {
+        setPredictionHistory(history);
       }
-      const data = await response.json();
-      const record = parsePrediction(data);
-      if (!record) {
-        pushPrediction(null);
-        return;
-      }
-      pushPrediction(record);
-    } catch (err) {
+    } catch {
       pushPrediction(null);
     }
-  }, [apiBase, pushPrediction]);
-
-  const fetchSession = useCallback(async () => {
-    if (!sessionId) return;
-
-    try {
-      const response = await fetch(`${apiBase}/api/sessions/${sessionId}`);
-      if (!response.ok) return;
-      const record = parseSession(await response.json());
-      if (!record) return;
-      setSessionRecord(record);
-      setSessionGoal((current) => (current ? current : record.goal));
-    } catch (err) {
-      // Ignore session refresh failures.
-    }
-  }, [apiBase, sessionId]);
+  }, [pushPrediction]);
 
   useEffect(() => {
-    setHealthStatus("checking");
-    void fetchHealth();
-    void fetchLatestPrediction();
-  }, [fetchHealth, fetchLatestPrediction]);
+    void refreshHealth();
+    void refreshLatest();
+    void api.getActiveSession().then((active) => {
+      if (!active) return;
+      setSessionRecord(active);
+      setSessionId(active.sessionId);
+      setSessionGoal(active.goal);
+      setFocusMode((active.focusMode as (typeof FOCUS_MODES)[number]) || "normal");
+    });
+  }, [refreshHealth, refreshLatest]);
 
   useEffect(() => {
-    if (!sessionId) {
-      setSessionRecord(null);
-      return;
-    }
-
-    void fetchSession();
-    const intervalId = window.setInterval(() => {
-      void fetchSession();
-    }, 15000);
+    const unsubs: Array<Promise<() => void>> = [];
+    unsubs.push(
+      api.onPrediction((record) => {
+        pushPrediction(record);
+      }),
+    );
+    unsubs.push(
+      api.onSnapback((payload) => {
+        const summary = String(payload.summary ?? "Previous task");
+        setSnapbackNote(`Snapback: ${summary}`);
+      }),
+    );
+    unsubs.push(
+      api.onHyperfocus((payload) => {
+        setHyperfocusNote(payload.message);
+      }),
+    );
 
     return () => {
-      window.clearInterval(intervalId);
+      void Promise.all(unsubs).then((handlers) => handlers.forEach((off) => off()));
     };
-  }, [fetchSession, sessionId]);
-
-  useEffect(() => {
-    let isActive = true;
-    shouldReconnectRef.current = true;
-    retryCountRef.current = 0;
-
-    const clearReconnectTimeout = () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
-
-    const connect = () => {
-      clearReconnectTimeout();
-      if (!isActive) return;
-
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-
-      let wsUrl: string;
-      try {
-        wsUrl = toWsUrl(apiBase);
-      } catch (err) {
-        setWsStatus("error");
-        return;
-      }
-
-      const socket = new WebSocket(wsUrl);
-      wsRef.current = socket;
-      setReconnectDelayMs(null);
-      setWsStatus(retryCountRef.current > 0 ? "reconnecting" : "connecting");
-
-      socket.addEventListener("open", () => {
-        if (!isActive) return;
-        setWsStatus("online");
-        setReconnectDelayMs(null);
-        retryCountRef.current = 0;
-      });
-      socket.addEventListener("close", () => {
-        if (!isActive) return;
-        if (!shouldReconnectRef.current) {
-          setWsStatus("offline");
-          return;
-        }
-        const delay = nextBackoffDelay(retryCountRef.current);
-        retryCountRef.current += 1;
-        setReconnectDelayMs(delay);
-        setWsStatus("reconnecting");
-        reconnectTimeoutRef.current = setTimeout(connect, delay);
-      });
-      socket.addEventListener("error", () => {
-        if (!isActive) return;
-        setWsStatus("error");
-      });
-      socket.addEventListener("message", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          const record = parsePrediction(data);
-          if (record) {
-            pushPrediction(record);
-          }
-        } catch (err) {
-          // Ignore parse errors.
-        }
-      });
-    };
-
-    connect();
-
-    return () => {
-      isActive = false;
-      shouldReconnectRef.current = false;
-      clearReconnectTimeout();
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [apiBase]);
-
-  const handleApplyApiBase = () => {
-    const trimmed = apiBaseInput.trim();
-    const next = trimmed || apiBase;
-    try {
-      new URL(next);
-    } catch (err) {
-      setApiBaseError("Enter a valid URL, e.g. http://localhost:8080.");
-      return;
-    }
-    setApiBaseError(null);
-    setApiBase(next);
-    setApiBaseInput(next);
-    storeApiBase(next);
-  };
-
-  const handleSendTestPrediction = async () => {
-    const payload = {
-      sessionId: sessionId || "demo-session",
-      focusScore: Math.random() * 100,
-      distractionRisk: Math.random(),
-    };
-
-    try {
-      await fetch(`${apiBase}/api/predictions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-    } catch (err) {
-      // Ignore send failures.
-    }
-  };
+  }, [pushPrediction]);
 
   const handleStartSession = async () => {
     const goal = sessionGoal.trim();
     if (!goal) return;
-
     try {
-      const response = await fetch(`${apiBase}/api/sessions/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goal }),
-      });
-      if (!response.ok) return;
-      const record = parseSession(await response.json());
-      if (!record) return;
+      const record = await api.startSession(goal, focusMode);
       setSessionRecord(record);
       setSessionId(record.sessionId);
-      setSessionGoal(record.goal || goal);
-    } catch (err) {
-      // Ignore start failures.
+      setSessionGoal(record.goal);
+      setRecap(null);
+    } catch {
+      // ignore
     }
   };
 
   const handleStopSession = async () => {
     if (!sessionId) return;
-
     try {
-      const response = await fetch(`${apiBase}/api/sessions/${sessionId}/stop`, {
-        method: "POST",
-      });
-      if (!response.ok) return;
-      const record = parseSession(await response.json());
-      if (!record) return;
+      const record = await api.stopSession(sessionId);
       setSessionRecord(record);
-    } catch (err) {
-      // Ignore stop failures.
+      const sessionRecap = await api.getSessionRecap(sessionId);
+      setRecap(sessionRecap);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleFocusModeChange = async (mode: (typeof FOCUS_MODES)[number]) => {
+    setFocusMode(mode);
+    try {
+      await api.setFocusMode(mode);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleLabel = async (label: FocusLabel) => {
+    if (!sessionId) {
+      setLabelStatus("Start a session to save feedback.");
+      return;
+    }
+    try {
+      await api.submitLabel(sessionId, label);
+      setLabelStatus(`Saved: ${focusStateLabel(label)}`);
+    } catch {
+      setLabelStatus("Could not save feedback.");
+    }
+  };
+
+  const handleSendTestPrediction = async () => {
+    try {
+      const record = await api.sendTestPrediction();
+      pushPrediction(record);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleRefreshPermissions = async () => {
+    try {
+      const status = await api.refreshPermissions();
+      setPermissionMessage(status.message);
+    } catch {
+      // ignore
     }
   };
 
@@ -357,25 +207,6 @@ export default function App() {
   const riskBadgeLabel = prediction ? riskLabel(riskValue) : "No data";
   const riskClass = riskLevel(riskValue);
   const sessionStatusLabel = sessionRecord ? sessionRecord.status.toLowerCase() : "idle";
-  const predictionTimeLabel = prediction ? formatTime(prediction.timestamp) : "No data yet";
-  const sessionStartedLabel = formatTime(sessionRecord?.startedAt ?? null);
-  const sessionEndedLabel = formatTime(sessionRecord?.endedAt ?? null);
-  const historyEntries = useMemo(() => predictionHistory, [predictionHistory]);
-
-  const connectionNote = useMemo(() => {
-    if (apiBaseError) return apiBaseError;
-    if (healthStatus === "offline") {
-      return "API offline. Start the backend or verify the base URL.";
-    }
-    if (wsStatus === "reconnecting" && reconnectDelayMs !== null) {
-      const seconds = Math.max(1, Math.round(reconnectDelayMs / 1000));
-      return `WebSocket reconnecting in ${seconds}s.`;
-    }
-    if (wsStatus === "error") {
-      return "WebSocket error. Retrying connection.";
-    }
-    return null;
-  }, [apiBaseError, healthStatus, reconnectDelayMs, wsStatus]);
 
   return (
     <div className="app">
@@ -384,17 +215,18 @@ export default function App() {
           <p className="eyebrow">FocoFlow</p>
           <h1>Live Focus Command Center</h1>
           <p className="subtitle">
-            Predictive focus monitoring with real-time recovery cues and session flow.
+            Measures how you work — deep focus, drift, and context-switch thrash — with snapback
+            recovery when you return.
           </p>
         </div>
         <div className="status-stack">
           <div className="status-pill">
-            <span className="status-label">API</span>
+            <span className="status-label">App</span>
             <span className="status-value">{healthStatus}</span>
           </div>
           <div className="status-pill">
-            <span className="status-label">WebSocket</span>
-            <span className="status-value">{wsStatus}</span>
+            <span className="status-label">Capture</span>
+            <span className="status-value">{captureRunning ? "running" : "idle"}</span>
           </div>
         </div>
       </header>
@@ -414,11 +246,17 @@ export default function App() {
               <p className="metric-label">Distraction risk</p>
               <p className="metric-value">{formatPercent(prediction?.distractionRisk ?? null)}</p>
             </div>
+            <div className="metric">
+              <p className="metric-label">State</p>
+              <p className="metric-value state-value">
+                {focusStateLabel(prediction?.focusState ?? null)}
+              </p>
+            </div>
           </div>
           <div className="meta">
             <div>
               <p className="meta-label">Last update</p>
-              <p className="meta-value">{predictionTimeLabel}</p>
+              <p className="meta-value">{formatTime(prediction?.timestamp ?? null)}</p>
             </div>
             <div>
               <p className="meta-label">Session</p>
@@ -439,10 +277,25 @@ export default function App() {
             <span>Focus goal</span>
             <input
               type="text"
-              placeholder="Ship the focus engine"
+              placeholder="Ship the snapback overlay"
               value={sessionGoal}
               onChange={(event) => setSessionGoal(event.target.value)}
             />
+          </label>
+          <label className="field">
+            <span>Focus mode</span>
+            <select
+              value={focusMode}
+              onChange={(event) =>
+                void handleFocusModeChange(event.target.value as (typeof FOCUS_MODES)[number])
+              }
+            >
+              {FOCUS_MODES.map((mode) => (
+                <option key={mode} value={mode}>
+                  {mode}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="button-row">
             <button className="primary-button" onClick={handleStartSession}>
@@ -459,11 +312,11 @@ export default function App() {
             </div>
             <div>
               <p className="meta-label">Started</p>
-              <p className="meta-value">{sessionStartedLabel}</p>
+              <p className="meta-value">{formatTime(sessionRecord?.startedAt ?? null)}</p>
             </div>
             <div>
               <p className="meta-label">Ended</p>
-              <p className="meta-value">{sessionEndedLabel}</p>
+              <p className="meta-value">{formatTime(sessionRecord?.endedAt ?? null)}</p>
             </div>
           </div>
         </section>
@@ -478,6 +331,34 @@ export default function App() {
               <li key={`${signal}-${index}`}>{signal}</li>
             ))}
           </ul>
+          {hyperfocusNote ? <p className="helper-text alert">{hyperfocusNote}</p> : null}
+          {snapbackNote ? <p className="helper-text snapback">{snapbackNote}</p> : null}
+        </section>
+
+        <section className="card feedback-card">
+          <div className="card-header">
+            <h2>Focus Feedback</h2>
+            <span className="pill">train the model</span>
+          </div>
+          <p className="helper-text">One tap — was that moment actually focused?</p>
+          <div className="button-row feedback-row">
+            <button className="secondary-button" onClick={() => void handleLabel("DEEP_FOCUS")}>
+              Deep
+            </button>
+            <button className="secondary-button" onClick={() => void handleLabel("PRODUCTIVE")}>
+              Focused
+            </button>
+            <button
+              className="secondary-button"
+              onClick={() => void handleLabel("PSEUDO_PRODUCTIVE")}
+            >
+              Drift
+            </button>
+            <button className="secondary-button" onClick={() => void handleLabel("DISTRACTED")}>
+              Distracted
+            </button>
+          </div>
+          {labelStatus ? <p className="helper-text">{labelStatus}</p> : null}
         </section>
 
         <section className="card history-card">
@@ -486,17 +367,17 @@ export default function App() {
             <span className="pill">latest {HISTORY_LIMIT}</span>
           </div>
           <ul className="history-list">
-            {historyEntries.length === 0 ? (
+            {predictionHistory.length === 0 ? (
               <li className="history-empty">No predictions yet.</li>
             ) : (
-              historyEntries.map((entry) => (
+              predictionHistory.map((entry) => (
                 <li
                   key={`${entry.timestamp}-${entry.sessionId}-${entry.focusScore}`}
                   className="history-item"
                 >
                   <div>
                     <p className="history-time">{formatTime(entry.timestamp)}</p>
-                    <p className="history-session">{entry.sessionId || "unknown session"}</p>
+                    <p className="history-session">{focusStateLabel(entry.focusState)}</p>
                   </div>
                   <div className="history-metrics">
                     <span className="history-score">{formatScore(entry.focusScore)}</span>
@@ -510,29 +391,49 @@ export default function App() {
           </ul>
         </section>
 
+        {recap ? (
+          <section className="card recap-card">
+            <div className="card-header">
+              <h2>Session Recap</h2>
+              <span className="pill">summary</span>
+            </div>
+            <div className="meta">
+              <div>
+                <p className="meta-label">Duration</p>
+                <p className="meta-value">{Math.round(recap.durationSecs / 60)} min</p>
+              </div>
+              <div>
+                <p className="meta-label">Avg focus</p>
+                <p className="meta-value">{formatScore(recap.avgFocusScore)}</p>
+              </div>
+              <div>
+                <p className="meta-label">Deep work</p>
+                <p className="meta-value">{recap.deepFocusPct.toFixed(0)}%</p>
+              </div>
+              <div>
+                <p className="meta-label">Snapbacks</p>
+                <p className="meta-value">{recap.snapbackCount}</p>
+              </div>
+              <div>
+                <p className="meta-label">Thrash spikes</p>
+                <p className="meta-value">{recap.thrashSpikes}</p>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         <section className="card config-card">
           <div className="card-header">
-            <h2>Connection</h2>
-            <span className="pill">local dev</span>
+            <h2>Permissions</h2>
+            <span className="pill">local desktop</span>
           </div>
-          <label className="field">
-            <span>API base URL</span>
-            <input
-              type="text"
-              value={apiBaseInput}
-              onChange={(event) => {
-                setApiBaseInput(event.target.value);
-                if (apiBaseError) setApiBaseError(null);
-              }}
-            />
-          </label>
-          <button className="secondary-button" onClick={handleApplyApiBase}>
-            Apply
-          </button>
-          {connectionNote ? <p className="helper-text">{connectionNote}</p> : null}
           <p className="helper-text">
-            WebSocket endpoint expected at <code>/ws/predictions</code>.
+            {permissionMessage ||
+              "FocoFlow runs locally. Grant Accessibility + Input Monitoring on macOS."}
           </p>
+          <button className="secondary-button" onClick={handleRefreshPermissions}>
+            Refresh permissions
+          </button>
         </section>
       </main>
     </div>
