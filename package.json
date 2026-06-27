@@ -8,8 +8,8 @@
     "test": "npm run test --prefix frontend",
     "typecheck": "npm run typecheck --prefix frontend",
     "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:dev": "CARGO_TARGET_DIR=src-tauri/target tauri dev",
+    "tauri:build": "CARGO_TARGET_DIR=src-tauri/target tauri build"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"
