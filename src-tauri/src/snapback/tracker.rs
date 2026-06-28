@@ -2,7 +2,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use crate::engine::app_context::{classify, snapback_on_task};
 use crate::snapback::title_parser::{parse_window_title, ParsedTitle};
-use crate::types::ContextSnapshotDto;
+use crate::types::{AppRuleRecord, ContextSnapshotDto};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DistractionState {
@@ -42,6 +42,7 @@ pub struct ContextTracker {
     /// Latest label from the classifier — shared brain with the dashboard.
     latest_focus_state: Option<String>,
     latest_session_goal: Option<String>,
+    latest_app_rules: Vec<AppRuleRecord>,
 }
 
 impl ContextTracker {
@@ -59,7 +60,13 @@ impl ContextTracker {
             pending_snapback: None,
             latest_focus_state: None,
             latest_session_goal: None,
+            latest_app_rules: Vec::new(),
         }
+    }
+
+    pub fn set_app_rules(&mut self, rules: &[AppRuleRecord]) {
+        self.latest_app_rules.clear();
+        self.latest_app_rules.extend_from_slice(rules);
     }
 
     pub fn state(&self) -> DistractionState {
@@ -156,7 +163,7 @@ impl ContextTracker {
     }
 
     fn is_on_task(&self, app_name: &str, window_title: &str) -> bool {
-        let ctx = classify(app_name, window_title);
+        let ctx = classify(app_name, window_title, &self.latest_app_rules);
         snapback_on_task(
             &ctx,
             window_title,

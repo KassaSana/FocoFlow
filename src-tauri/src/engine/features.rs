@@ -3,7 +3,9 @@ use std::collections::VecDeque;
 use chrono::{Datelike, Timelike, Utc};
 
 use crate::engine::app_context::classify;
-use crate::types::{CaptureEvent, EventType};
+use crate::types::{
+    AppRuleRecord, CaptureEvent, EventType,
+};
 
 #[derive(Debug, Clone)]
 pub struct FeatureVector {
@@ -158,7 +160,7 @@ impl FeatureExtractor {
         self.focus_momentum = alpha * score + (1.0 - alpha) * self.focus_momentum;
     }
 
-    pub fn update(&mut self, event: &CaptureEvent) -> FeatureVector {
+    pub fn update(&mut self, event: &CaptureEvent, rules: &[AppRuleRecord]) -> FeatureVector {
         let now = event.timestamp_secs;
         if self.session_start_ts.is_none() {
             self.session_start_ts = Some(now);
@@ -173,10 +175,10 @@ impl FeatureExtractor {
         self.trim(now);
         self.update_break_state(event, now);
         self.update_current_app(event, now);
-        self.extract_features(now)
+        self.extract_features(now, rules)
     }
 
-    pub fn extract_features(&self, now: f64) -> FeatureVector {
+    pub fn extract_features(&self, now: f64, rules: &[AppRuleRecord]) -> FeatureVector {
         if self.events_5min.is_empty() {
             return FeatureVector::empty(now);
         }
@@ -278,7 +280,7 @@ impl FeatureExtractor {
             .iter()
             .any(|e| e.event_type == EventType::WindowTitleChange);
 
-        let ctx = classify(&self.current_app_name, &self.current_window_title);
+        let ctx = classify(&self.current_app_name, &self.current_window_title, rules);
         let productivity_category = ctx.productivity_category().to_string();
         let is_ent = ctx.is_entertainment || ctx.title_is_distracting;
 

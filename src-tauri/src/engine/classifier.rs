@@ -1,7 +1,7 @@
 use crate::engine::app_context::classify;
 use crate::engine::features::FeatureVector;
 use crate::engine::goal_alignment::{alignment_bias, alignment_score};
-use crate::types::FocusMode;
+use crate::types::{AppRuleRecord, FocusMode};
 
 #[derive(Debug, Clone)]
 pub struct PredictionScores {
@@ -75,8 +75,12 @@ fn deep_work_score(features: &FeatureVector, thrash: f64, drift: f64) -> f64 {
     )
 }
 
-fn heuristic_probas(features: &FeatureVector, session_goal: Option<&str>) -> ([f64; 4], f64, f64) {
-    let ctx = classify(&features.app_name, &features.window_title);
+fn heuristic_probas(
+    features: &FeatureVector,
+    session_goal: Option<&str>,
+    rules: &[AppRuleRecord],
+) -> ([f64; 4], f64, f64) {
+    let ctx = classify(&features.app_name, &features.window_title, rules);
     let bias = alignment_bias(session_goal, &ctx, &features.window_title);
 
     let thrash = thrash_score(features);
@@ -87,8 +91,16 @@ fn heuristic_probas(features: &FeatureVector, session_goal: Option<&str>) -> ([f
     let idle_time = features.idle_time_30s;
     let keystroke_rate = features.keystroke_rate;
     let time_in_app = features.time_in_current_app as f64;
-    let is_entertainment = if features.is_entertainment { 1.0 } else { 0.0 };
-    let is_communication = if features.is_communication { 1.0 } else { 0.0 };
+    let is_entertainment = if ctx.is_entertainment || ctx.personal_block {
+        1.0
+    } else {
+        0.0
+    };
+    let is_communication = if ctx.is_communication && !ctx.personal_allow {
+        1.0
+    } else {
+        0.0
+    };
 
     let mut distracted = 0.0;
     distracted += thrash * 0.30;
@@ -161,14 +173,19 @@ impl Classifier {
         self.focus_mode = mode;
     }
 
-    pub fn predict(&self, features: &FeatureVector, session_goal: Option<&str>) -> PredictionScores {
-        let ctx = classify(&features.app_name, &features.window_title);
+    pub fn predict(
+        &self,
+        features: &FeatureVector,
+        session_goal: Option<&str>,
+        rules: &[AppRuleRecord],
+    ) -> PredictionScores {
+        let ctx = classify(&features.app_name, &features.window_title, rules);
         let goal_alignment = session_goal
             .filter(|g| !g.trim().is_empty())
             .map(|g| alignment_score(g, &ctx, &features.window_title))
             .unwrap_or(0.5);
 
-        let (probas, thrash, drift) = heuristic_probas(features, session_goal);
+        let (probas, thrash, drift) = heuristic_probas(features, session_goal, rules);
         let mut scores = scores_from_probas(probas, thrash, drift, goal_alignment);
 
         #[cfg(feature = "onnx")]
@@ -177,7 +194,7 @@ impl Classifier {
         }
 
         let threshold = self.focus_mode.risk_threshold();
-        if scores.distraction_risk >= threshold || thrash >= 0.75 {
+        if scores.distraction_risk >= threshold || thrash >= 0.75 || ctx.personal_block {
             scores.focus_state = "DISTRACTED".to_string();
         } else if drift >= 0.55 && scores.focus_state != "DEEP_FOCUS" {
             scores.focus_state = "PSEUDO_PRODUCTIVE".to_string();
@@ -220,7 +237,7 @@ mod tests {
 
     #[test]
     fn stable_work_scores_low_thash_and_drift() {
-        let scores = Classifier::new(FocusMode::Normal).predict(&stable_features(), None);
+        let scores = Classifier::new(FocusMode::Normal).predict(&stable_features(), None, &[]);
         assert!(scores.thrash_score < 0.35, "thrash={}", scores.thrash_score);
         assert!(scores.drift_score < 0.35, "drift={}", scores.drift_score);
         assert!(scores.distraction_risk < 0.5);
@@ -235,7 +252,7 @@ mod tests {
             is_entertainment: true,
             ..stable_features()
         };
-        let scores = Classifier::new(FocusMode::Normal).predict(&features, None);
+        let scores = Classifier::new(FocusMode::Normal).predict(&features, None, &[]);
         assert!(scores.thrash_score >= 0.75, "thrash={}", scores.thrash_score);
         assert_eq!(scores.focus_state, "DISTRACTED");
     }
@@ -251,14 +268,14 @@ mod tests {
             unique_apps_5min: 2,
             ..stable_features()
         };
-        let scores = Classifier::new(FocusMode::Normal).predict(&features, None);
+        let scores = Classifier::new(FocusMode::Normal).predict(&features, None, &[]);
         assert!(scores.drift_score >= 0.55, "drift={}", scores.drift_score);
         assert_eq!(scores.focus_state, "PSEUDO_PRODUCTIVE");
     }
 
     #[test]
     fn deep_focus_when_stable_and_settled() {
-        let scores = Classifier::new(FocusMode::Normal).predict(&stable_features(), None);
+        let scores = Classifier::new(FocusMode::Normal).predict(&stable_features(), None, &[]);
         assert!(
             scores.focus_state == "DEEP_FOCUS" || scores.focus_state == "PRODUCTIVE",
             "state={}",
@@ -279,12 +296,39 @@ mod tests {
             window_title: "classifier.rs".to_string(),
             ..stable_features()
         };
-        let without_goal = Classifier::new(FocusMode::Normal).predict(&features, None);
+        let without_goal = Classifier::new(FocusMode::Normal).predict(&features, None, &[]);
         let with_goal = Classifier::new(FocusMode::Normal).predict(
             &features,
             Some("implement the rust classifier feature"),
+            &[],
         );
         assert!(with_goal.goal_alignment > without_goal.goal_alignment);
         assert!(with_goal.drift_score <= without_goal.drift_score);
+    }
+
+    #[test]
+    fn personal_block_rule_increases_distraction() {
+        let features = FeatureVector {
+            app_name: "Notion".to_string(),
+            window_title: "Weekly plan".to_string(),
+            is_productivity: true,
+            is_ide: false,
+            is_entertainment: false,
+            keystroke_rate: 2.0,
+            time_in_current_app: 120,
+            ..FeatureVector::empty(0.0)
+        };
+        let rules = vec![crate::types::AppRuleRecord {
+            id: 1,
+            pattern: "notion".to_string(),
+            rule_type: crate::types::AppRuleKind::Block,
+            note: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }];
+        let default_scores = Classifier::new(FocusMode::Normal).predict(&features, None, &[]);
+        let blocked_scores = Classifier::new(FocusMode::Normal).predict(&features, None, &rules);
+        assert!(blocked_scores.distraction_risk >= default_scores.distraction_risk);
+        assert_eq!(blocked_scores.focus_state, "DISTRACTED");
     }
 }

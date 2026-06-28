@@ -6,7 +6,8 @@ use crate::engine::{check_hyperfocus, Classifier, FeatureExtractor};
 use crate::snapback::ContextTracker;
 use crate::storage::Storage;
 use crate::types::{
-    CaptureEvent, EventType, FocusMode, PermissionStatus, PredictionRecord, SnapbackPayload,
+    AppRuleRecord, CaptureEvent, EventType, FocusMode, PermissionStatus, PredictionRecord,
+    SnapbackPayload,
 };
 
 pub struct AppState {
@@ -16,6 +17,7 @@ pub struct AppState {
     pub focus_mode: parking_lot::Mutex<FocusMode>,
     pub classifier: parking_lot::Mutex<Classifier>,
     pub latest_prediction: parking_lot::Mutex<Option<PredictionRecord>>,
+    pub app_rules: parking_lot::Mutex<Vec<AppRuleRecord>>,
     event_rx: parking_lot::Mutex<Option<std::sync::mpsc::Receiver<CaptureEvent>>>,
 }
 
@@ -23,6 +25,7 @@ impl AppState {
     pub fn new(storage: Storage) -> Self {
         let permissions = crate::capture::check_permissions();
         let focus_mode = FocusMode::Normal;
+        let app_rules = storage.list_app_rules().unwrap_or_default();
         Self {
             storage: parking_lot::Mutex::new(storage),
             permissions: parking_lot::Mutex::new(permissions),
@@ -30,7 +33,14 @@ impl AppState {
             focus_mode: parking_lot::Mutex::new(focus_mode),
             classifier: parking_lot::Mutex::new(Classifier::new(focus_mode)),
             latest_prediction: parking_lot::Mutex::new(None),
+            app_rules: parking_lot::Mutex::new(app_rules),
             event_rx: parking_lot::Mutex::new(None),
+        }
+    }
+
+    pub fn reload_app_rules(&self) {
+        if let Ok(rules) = self.storage.lock().list_app_rules() {
+            *self.app_rules.lock() = rules;
         }
     }
 
@@ -71,6 +81,9 @@ fn run_engine_loop(app: AppHandle) {
         };
 
         for event in events {
+            let app_rules = state.app_rules.lock().clone();
+            tracker.set_app_rules(&app_rules);
+
             if matches!(
                 event.event_type,
                 EventType::WindowFocusChange | EventType::WindowTitleChange
@@ -80,7 +93,7 @@ fn run_engine_loop(app: AppHandle) {
                 tracker.on_activity();
             }
 
-            let features = extractor.update(&event);
+            let features = extractor.update(&event, &app_rules);
             let now = features.timestamp;
             if now - last_prediction_at >= 1.0 {
                 let focus_mode = *state.focus_mode.lock();
@@ -96,7 +109,7 @@ fn run_engine_loop(app: AppHandle) {
                 let scores = state
                     .classifier
                     .lock()
-                    .predict(&features, session_goal);
+                    .predict(&features, session_goal, &app_rules);
                 extractor.update_focus_score(scores.focus_score / 100.0, 0.2);
 
                 let record = PredictionRecord {

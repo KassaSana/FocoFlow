@@ -163,28 +163,32 @@ mod tests {
 
     #[test]
     fn coding_goal_aligns_with_cursor() {
+<<<<<<< HEAD
         let ctx = classify("Cursor", "classifier.rs — Snapback");
+=======
+        let ctx = classify("Cursor", "classifier.rs — FocoFlow", &[]);
+>>>>>>> dd99d0b (applying personal app rules in classifier,snapback, engine cache)
         let score = alignment_score("fix the rust classifier bug", &ctx, "classifier.rs");
         assert!(score >= 0.9, "score={score}");
     }
 
     #[test]
     fn coding_goal_misaligns_with_slack() {
-        let ctx = classify("Slack", "#random");
+        let ctx = classify("Slack", "#random", &[]);
         let score = alignment_score("implement the api endpoint", &ctx, "#random");
         assert!(score <= 0.4, "score={score}");
     }
 
     #[test]
     fn research_goal_aligns_with_docs_in_browser() {
-        let ctx = classify("Google Chrome", "Rust documentation - std");
+        let ctx = classify("Google Chrome", "Rust documentation - std", &[]);
         let score = alignment_score("research tokio docs", &ctx, "Rust documentation");
         assert!(score >= 0.8, "score={score}");
     }
 
     #[test]
     fn empty_goal_is_neutral() {
-        let ctx = classify("Cursor", "lib.rs");
+        let ctx = classify("Cursor", "lib.rs", &[]);
         assert_eq!(alignment_score("", &ctx, "lib.rs"), 0.5);
         assert_eq!(alignment_bias(None, &ctx, "lib.rs"), 0.0);
     }

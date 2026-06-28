@@ -173,7 +173,7 @@ pub fn upsert_app_rule(
     state: State<'_, AppState>,
     request: UpsertAppRuleRequest,
 ) -> Result<AppRuleRecord, String> {
-    state
+    let record = state
         .storage
         .lock()
         .upsert_app_rule(
@@ -181,7 +181,9 @@ pub fn upsert_app_rule(
             request.rule_type,
             request.note.as_deref(),
         )
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    state.reload_app_rules();
+    Ok(record)
 }
 
 #[tauri::command]
@@ -190,5 +192,7 @@ pub fn delete_app_rule(state: State<'_, AppState>, id: i64) -> Result<(), String
         .storage
         .lock()
         .delete_app_rule(id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    state.reload_app_rules();
+    Ok(())
 }
