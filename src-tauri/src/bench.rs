@@ -111,7 +111,7 @@ fn refresh_current_process(sys: &mut System) {
     sys.refresh_process(pid);
 }
 
-fn current_process_kib(sys: &System) -> Option<u64> {
+fn current_process_bytes(sys: &System) -> Option<u64> {
     let pid = sysinfo::get_current_pid().ok()?;
     let p = sys.process(pid)?;
     Some(p.memory())
@@ -127,7 +127,7 @@ pub fn run_benchmark(args: BenchArgs) -> i32 {
     let bench_start = Instant::now();
 
     let mut sys = refresh_system();
-    let mem0_kib = current_process_kib(&sys).unwrap_or(0);
+    let mem0_bytes = current_process_bytes(&sys).unwrap_or(0);
 
     let classifier = Classifier::new(FocusMode::Normal);
     let features = stable_features();
@@ -152,7 +152,7 @@ pub fn run_benchmark(args: BenchArgs) -> i32 {
     std::thread::sleep(Duration::from_millis(200));
     refresh_current_process(&mut sys);
 
-    let mem1_kib = current_process_kib(&sys).unwrap_or(0);
+    let mem1_bytes = current_process_bytes(&sys).unwrap_or(0);
     let cpu_pct = current_process_cpu_percent(&sys).unwrap_or(0.0);
 
     let p50 = pctl(&times, 50.0);
@@ -167,8 +167,8 @@ pub fn run_benchmark(args: BenchArgs) -> i32 {
     println!("latency_us_p50={}", p50);
     println!("latency_us_p95={}", p95);
     println!("latency_us_p99={}", p99);
-    println!("mem_kib_before={}", mem0_kib);
-    println!("mem_kib_after={}", mem1_kib);
+    println!("mem_bytes_before={}", mem0_bytes);
+    println!("mem_bytes_after={}", mem1_bytes);
     println!("cpu_pct_sample={:.2}", cpu_pct);
     println!("bench_elapsed_ms={}", bench_start.elapsed().as_millis());
 
@@ -183,13 +183,13 @@ pub fn run_benchmark(args: BenchArgs) -> i32 {
 
             if last_report.elapsed() >= Duration::from_secs(5) {
                 refresh_current_process(&mut sys);
-                let mem_kib = current_process_kib(&sys).unwrap_or(0);
+                let mem_bytes = current_process_bytes(&sys).unwrap_or(0);
                 let cpu = current_process_cpu_percent(&sys).unwrap_or(0.0);
                 println!(
-                    "soak_elapsed_s={} iters={} mem_kib={} cpu_pct={:.2}",
+                    "soak_elapsed_s={} iters={} mem_bytes={} cpu_pct={:.2}",
                     soak_start.elapsed().as_secs(),
                     iters,
-                    mem_kib,
+                    mem_bytes,
                     cpu
                 );
                 last_report = Instant::now();
