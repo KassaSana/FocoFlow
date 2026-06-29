@@ -1,4 +1,5 @@
 mod capture;
+mod bench;
 mod commands;
 mod engine;
 mod snapback;
@@ -11,13 +12,31 @@ use tauri::Manager;
 use state::AppState;
 use storage::Storage;
 
+static PROCESS_START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+
+pub fn run_from_cli(args: Vec<String>) -> i32 {
+    let _ = PROCESS_START.set(std::time::Instant::now());
+
+    if args.iter().any(|a| a == "--benchmark") {
+        let bench_args = bench::parse_bench_args(&args);
+        return bench::run_benchmark(bench_args);
+    }
+
+    run();
+    0
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     env_logger::init();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
+            if let Some(t0) = PROCESS_START.get() {
+                log::info!("startup_ms_to_setup={}", t0.elapsed().as_millis());
+            }
+
             let app_data_dir = app
                 .path()
                 .app_data_dir()
@@ -48,6 +67,16 @@ pub fn run() {
             commands::send_test_prediction,
             commands::refresh_permissions,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Snapback");
+        .build(tauri::generate_context!())
+        .expect("error while building Snapback");
+
+    let handle = app.handle().clone();
+    app.run(move |_app_handle, event| {
+        if let tauri::RunEvent::Ready = event {
+            if let Some(t0) = PROCESS_START.get() {
+                log::info!("startup_ms_to_ready={}", t0.elapsed().as_millis());
+            }
+            let _ = handle.emit("snapback://ready", ());
+        }
+    });
 }
