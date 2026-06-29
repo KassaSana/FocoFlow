@@ -49,5 +49,5 @@ pub fn run() {
             commands::refresh_permissions,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running FocoFlow");
+        .expect("error while running Snapback");
 }

@@ -1,4 +1,4 @@
-# FocoFlow: Progress
+# Snapback: Progress
 
 ## 2026-06 — Tauri overhaul (v0.2)
 

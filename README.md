@@ -1,8 +1,8 @@
-# FocoFlow
+# Snapback
 
 **Predictive focus management for ADHD brains — one local desktop app.**
 
-FocoFlow measures not just *whether* you're working, but *how*: deep work, drift, context-switch thrash. When you return from a distraction, **Snapback** shows where you left off so context switches hurt less.
+Snapback measures not just *whether* you're working, but *how*: deep work, drift, context-switch thrash. When you return from a distraction, the **snapback overlay** shows where you left off so context switches hurt less.
 
 ![Status](https://img.shields.io/badge/status-alpha-yellow)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)
@@ -23,7 +23,7 @@ The old 4-layer stack (C++ → ZeroMQ → Python service → Spring Boot → Web
 ## Features
 
 - **Live focus states:** `DEEP_FOCUS`, `PRODUCTIVE`, `PSEUDO_PRODUCTIVE` (drift), `DISTRACTED`
-- **Snapback overlay:** "You were editing auth.ts in focoflow" when you return from distraction
+- **Snapback overlay:** "You were editing auth.ts in Snapback" when you return from distraction
 - **Focus modes:** deep / normal / recovery (different risk thresholds + hyperfocus guardrails)
 - **One-tap feedback:** label moments to build a personal training set
 - **Session recap:** duration, avg focus, deep-work %, snapback count, thrash spikes
@@ -32,7 +32,7 @@ The old 4-layer stack (C++ → ZeroMQ → Python service → Spring Boot → Web
 ## Project structure
 
 ```
-FocoFlow/
+Snapback/
 ├── src-tauri/              # Rust core (capture, engine, storage, snapback)
 ├── frontend/               # React dashboard + snapback.html overlay
 ├── ml/                     # Offline training + ONNX export
@@ -48,7 +48,7 @@ FocoFlow/
 
 - **Rust** 1.77+ ([rustup](https://rustup.rs))
 - **Node.js** 18+
-- **macOS:** grant **Accessibility** + **Input Monitoring** to FocoFlow in System Settings
+- **macOS:** grant **Accessibility** + **Input Monitoring** to Snapback in System Settings
 
 ### Dev
 
@@ -86,8 +86,8 @@ python -m ml.export_onnx --model-path artifacts/model.json --output artifacts/mo
 Global input capture and active-window detection require system permissions. If capture shows as idle:
 
 1. Open **System Settings → Privacy & Security**
-2. Enable **Accessibility** for FocoFlow
-3. Enable **Input Monitoring** for FocoFlow
+2. Enable **Accessibility** for Snapback
+3. Enable **Input Monitoring** for Snapback
 4. Click **Refresh permissions** in the app
 
 ## Troubleshooting local dev

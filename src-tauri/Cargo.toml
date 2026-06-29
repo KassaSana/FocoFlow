@@ -1,12 +1,12 @@
 [package]
-name = "focoflow"
+name = "snapback"
 version = "0.2.0"
-description = "FocoFlow — predictive focus management for ADHD brains"
-authors = ["FocoFlow"]
+description = "Snapback — predictive focus management for ADHD brains"
+authors = ["Snapback"]
 edition = "2021"
 
 [lib]
-name = "focoflow_lib"
+name = "snapback_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

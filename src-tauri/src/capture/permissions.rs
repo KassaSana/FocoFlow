@@ -5,7 +5,7 @@ pub fn check_permissions() -> PermissionStatus {
     let capture_available = probe_capture();
 
     let message = if !active_window_available && !capture_available {
-        "Grant Accessibility and Input Monitoring permissions in System Settings, then restart FocoFlow.".to_string()
+        "Grant Accessibility and Input Monitoring permissions in System Settings, then restart Snapback.".to_string()
     } else if !active_window_available {
         "Active window detection unavailable. Grant Accessibility permission in System Settings.".to_string()
     } else if !capture_available {

@@ -1,6 +1,6 @@
-# FocoFlow Deployment
+# Snapback Deployment
 
-> **Note:** As of v0.2, FocoFlow ships as a **Tauri desktop app**. The Docker / Spring Boot deployment path has been removed.
+> **Note:** As of v0.2, Snapback ships as a **Tauri desktop app**. The Docker / Spring Boot deployment path has been removed.
 
 ## Desktop build
 

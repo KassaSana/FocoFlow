@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn leaving_ide_for_youtube_enters_distracted() {
         let mut tracker = ContextTracker::new();
-        tracker.on_window_change("Cursor", "main.rs — FocoFlow");
+        tracker.on_window_change("Cursor", "main.rs — Snapback");
         tracker.on_prediction_feedback("PRODUCTIVE", None);
 
         tracker.on_window_change("Google Chrome", "Funny cats - YouTube");

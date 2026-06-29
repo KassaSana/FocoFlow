@@ -137,9 +137,9 @@ mod tests {
 
     #[test]
     fn cursor_is_ide_and_on_task() {
-        let ctx = classify("Cursor", "classifier.rs — FocoFlow");
+        let ctx = classify("Cursor", "classifier.rs — Snapback");
         assert!(ctx.is_ide);
-        assert!(snapback_on_task(&ctx, "classifier.rs — FocoFlow", None, None));
+        assert!(snapback_on_task(&ctx, "classifier.rs — Snapback", None, None));
     }
 
     #[test]

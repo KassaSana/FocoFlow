@@ -1,4 +1,4 @@
-# Offline training dependencies for FocoFlow.
+# Offline training dependencies for Snapback.
 # The shipped desktop app runs inference in Rust (heuristic baseline, optional ONNX).
 
 # Optional model backends

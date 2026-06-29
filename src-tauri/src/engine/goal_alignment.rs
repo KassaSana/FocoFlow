@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn coding_goal_aligns_with_cursor() {
-        let ctx = classify("Cursor", "classifier.rs — FocoFlow");
+        let ctx = classify("Cursor", "classifier.rs — Snapback");
         let score = alignment_score("fix the rust classifier bug", &ctx, "classifier.rs");
         assert!(score >= 0.9, "score={score}");
     }

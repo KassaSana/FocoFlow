@@ -213,7 +213,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div>
-          <p className="eyebrow">FocoFlow</p>
+          <p className="eyebrow">Snapback</p>
           <h1>Live Focus Command Center</h1>
           <p className="subtitle">
             Measures how you work — deep focus, drift, and context-switch thrash — with snapback
@@ -430,7 +430,7 @@ export default function App() {
           </div>
           <p className="helper-text">
             {permissionMessage ||
-              "FocoFlow runs locally. Grant Accessibility + Input Monitoring on macOS."}
+              "Snapback runs locally. Grant Accessibility + Input Monitoring on macOS."}
           </p>
           <button className="secondary-button" onClick={handleRefreshPermissions}>
             Refresh permissions

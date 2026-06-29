@@ -1,4 +1,4 @@
-# FocoFlow: Implementation Progress (Archive)
+# Snapback: Implementation Progress (Archive)
 
 **Last Updated:** January 3, 2026
 **Phase:** Phase 3 - Frontend UI (In Progress)

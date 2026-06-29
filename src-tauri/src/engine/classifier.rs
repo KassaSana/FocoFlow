@@ -200,7 +200,7 @@ mod tests {
     fn stable_features() -> FeatureVector {
         FeatureVector {
             app_name: "Cursor".to_string(),
-            window_title: "classifier.rs — FocoFlow".to_string(),
+            window_title: "classifier.rs — Snapback".to_string(),
             context_switches_30s: 0,
             context_switches_5min: 1,
             unique_apps_5min: 1,

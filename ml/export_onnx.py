@@ -36,7 +36,7 @@ def export_xgboost_to_onnx(model_path: str, output_path: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Export FocoFlow model to ONNX")
+    parser = argparse.ArgumentParser(description="Export Snapback model to ONNX")
     parser.add_argument("--model-path", required=True)
     parser.add_argument("--output", default="artifacts/model.onnx")
     args = parser.parse_args()

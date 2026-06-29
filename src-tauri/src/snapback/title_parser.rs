@@ -54,7 +54,7 @@ mod tests {
 
     #[test]
     fn parses_vscode_title() {
-        let parsed = parse_window_title("Code", "auth.ts - focoflow - Visual Studio Code");
+        let parsed = parse_window_title("Code", "auth.ts - snapback - Visual Studio Code");
         assert_eq!(parsed.file_hint, "auth.ts");
         assert!(parsed.summary.contains("auth.ts"));
     }

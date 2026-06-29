@@ -1,6 +1,6 @@
-# FocoFlow: Core Concepts Explained
+# Snapback: Core Concepts Explained
 
-This document explains key computer science concepts used in FocoFlow, written for someone learning systems programming and ML engineering.
+This document explains key computer science concepts used in Snapback, written for someone learning systems programming and ML engineering.
 
 ---
 
