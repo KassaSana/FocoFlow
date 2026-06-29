@@ -8,6 +8,12 @@ Snapback measures not just *whether* you're working, but *how*: deep work, drift
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
+## Branding note
+
+- **Snapback** is the product/app name.
+- **snapback overlay** refers to the in-app context-recovery feature.
+- **Compatibility**: the local SQLite filename is still `focoflow.db` to avoid breaking existing installs.
+
 ## Architecture (v0.2)
 
 ```
