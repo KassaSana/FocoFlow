@@ -7,7 +7,7 @@ mod state;
 mod storage;
 mod types;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 use state::AppState;
 use storage::Storage;

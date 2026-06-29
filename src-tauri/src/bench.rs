@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use sysinfo::{CpuRefreshKind, MemoryRefreshKind, ProcessRefreshKind, ProcessesToUpdate, RefreshKind, System};
+use sysinfo::{CpuRefreshKind, MemoryRefreshKind, ProcessRefreshKind, RefreshKind, System};
 
 use crate::engine::classifier::Classifier;
 use crate::engine::features::FeatureVector;
@@ -108,7 +108,7 @@ fn refresh_current_process(sys: &mut System) {
     let Ok(pid) = sysinfo::get_current_pid() else {
         return;
     };
-    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    sys.refresh_process(pid);
 }
 
 fn current_process_kib(sys: &System) -> Option<u64> {
