@@ -8,6 +8,8 @@ import {
   formatTime,
   riskLabel,
   riskLevel,
+  type AppRuleKind,
+  type AppRuleRecord,
   type FocusLabel,
   type PredictionRecord,
   type SessionRecord,
@@ -16,6 +18,9 @@ import {
 
 const HISTORY_LIMIT = 8;
 const FOCUS_MODES = ["deep", "normal", "recovery"] as const;
+const APP_RULE_KINDS: AppRuleKind[] = ["allow", "block"];
+
+const ruleKindLabel = (kind: AppRuleKind) => (kind === "allow" ? "Allow" : "Block");
 
 const buildSignals = (record: PredictionRecord | null) => {
   if (!record) {
@@ -57,6 +62,11 @@ export default function App() {
   const [hyperfocusNote, setHyperfocusNote] = useState<string | null>(null);
   const [snapbackNote, setSnapbackNote] = useState<string | null>(null);
   const [labelStatus, setLabelStatus] = useState<string | null>(null);
+  const [appRules, setAppRules] = useState<AppRuleRecord[]>([]);
+  const [rulePattern, setRulePattern] = useState("");
+  const [ruleKind, setRuleKind] = useState<AppRuleKind>("allow");
+  const [ruleNote, setRuleNote] = useState("");
+  const [rulesStatus, setRulesStatus] = useState<string | null>(null);
 
   const pushPrediction = useCallback((record: PredictionRecord | null) => {
     if (!record) {
@@ -75,6 +85,15 @@ export default function App() {
       const next = isDuplicate ? current : [record, ...current];
       return next.slice(0, HISTORY_LIMIT);
     });
+  }, []);
+
+  const refreshAppRules = useCallback(async () => {
+    try {
+      const rules = await api.getAppRules();
+      setAppRules(rules);
+    } catch {
+      setRulesStatus("Could not load app rules.");
+    }
   }, []);
 
   const refreshHealth = useCallback(async () => {
@@ -104,6 +123,7 @@ export default function App() {
   useEffect(() => {
     void refreshHealth();
     void refreshLatest();
+    void refreshAppRules();
     void api.getActiveSession().then((active) => {
       if (!active) return;
       setSessionRecord(active);
@@ -111,7 +131,7 @@ export default function App() {
       setSessionGoal(active.goal);
       setFocusMode((active.focusMode as (typeof FOCUS_MODES)[number]) || "normal");
     });
-  }, [refreshHealth, refreshLatest]);
+  }, [refreshHealth, refreshLatest, refreshAppRules]);
 
   useEffect(() => {
     const unsubs: Array<Promise<() => void>> = [];
@@ -200,6 +220,34 @@ export default function App() {
       setPermissionMessage(status.message);
     } catch {
       // ignore
+    }
+  };
+
+  const handleAddAppRule = async () => {
+    const pattern = rulePattern.trim();
+    if (!pattern) {
+      setRulesStatus("Enter an app name or keyword (e.g. discord, notion).");
+      return;
+    }
+
+    try {
+      const saved = await api.upsertAppRule(pattern, ruleKind, ruleNote.trim() || undefined);
+      await refreshAppRules();
+      setRulePattern("");
+      setRuleNote("");
+      setRulesStatus(`Saved ${ruleKindLabel(saved.ruleType).toLowerCase()} rule for "${saved.pattern}".`);
+    } catch {
+      setRulesStatus("Could not save app rule.");
+    }
+  };
+
+  const handleDeleteAppRule = async (rule: AppRuleRecord) => {
+    try {
+      await api.deleteAppRule(rule.id);
+      setAppRules((current) => current.filter((entry) => entry.id !== rule.id));
+      setRulesStatus(`Removed rule for "${rule.pattern}".`);
+    } catch {
+      setRulesStatus("Could not delete app rule.");
     }
   };
 
@@ -422,6 +470,77 @@ export default function App() {
             </div>
           </section>
         ) : null}
+
+        <section className="card rules-card">
+          <div className="card-header">
+            <h2>Personal App Rules</h2>
+            <span className="pill">your overrides</span>
+          </div>
+          <p className="helper-text">
+            Match part of an app name or window title. Allow marks it as on-task for you; Block
+            treats it as a distraction.
+          </p>
+          <label className="field">
+            <span>Pattern</span>
+            <input
+              type="text"
+              placeholder="discord, notion, youtube"
+              value={rulePattern}
+              onChange={(event) => setRulePattern(event.target.value)}
+            />
+          </label>
+          <label className="field">
+            <span>Rule type</span>
+            <select
+              value={ruleKind}
+              onChange={(event) => setRuleKind(event.target.value as AppRuleKind)}
+            >
+              {APP_RULE_KINDS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {ruleKindLabel(kind)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Note (optional)</span>
+            <input
+              type="text"
+              placeholder="study group server"
+              value={ruleNote}
+              onChange={(event) => setRuleNote(event.target.value)}
+            />
+          </label>
+          <button className="primary-button" onClick={() => void handleAddAppRule()}>
+            Save rule
+          </button>
+          <ul className="rules-list">
+            {appRules.length === 0 ? (
+              <li className="rules-empty">No personal rules yet.</li>
+            ) : (
+              appRules.map((rule) => (
+                <li key={rule.id} className="rules-item">
+                  <div>
+                    <div className="rules-item-header">
+                      <span className="rules-pattern">{rule.pattern}</span>
+                      <span className={`rules-badge rules-badge-${rule.ruleType}`}>
+                        {ruleKindLabel(rule.ruleType)}
+                      </span>
+                    </div>
+                    {rule.note ? <p className="rules-note">{rule.note}</p> : null}
+                  </div>
+                  <button
+                    className="secondary-button rules-delete"
+                    onClick={() => void handleDeleteAppRule(rule)}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+          {rulesStatus ? <p className="helper-text">{rulesStatus}</p> : null}
+        </section>
 
         <section className="card config-card">
           <div className="card-header">

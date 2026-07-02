@@ -375,6 +375,66 @@ h1 {
   color: var(--muted);
 }
 
+.rules-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.rules-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: 14px;
+}
+
+.rules-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rules-pattern {
+  font-weight: 600;
+}
+
+.rules-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.rules-badge-allow {
+  background: #e3f6d5;
+  color: #27653b;
+}
+
+.rules-badge-block {
+  background: #ffd2c5;
+  color: #7f2f1e;
+}
+
+.rules-note {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.rules-empty {
+  color: var(--muted);
+}
+
+.rules-delete {
+  flex-shrink: 0;
+}
+
 .helper-text {
   font-size: 0.8rem;
   color: var(--muted);
